@@ -1,13 +1,12 @@
 // script.js
 const MAX_DECODE_PX = 1200;
 const THUMB_MAX_WIDTH = 200;
-let portraitFrameFile = null;
-let landscapeFrameFile = null;
+let frameFile = null;            // single frame
 let photosFiles = [];
 let batch = [];
 let currentAdjustIndex = -1;
 let currentGalleryIndex = 0;
-let editorState = { portrait: { x: 0, y: 0, scale: 1 }, landscape: { x: 0, y: 0, scale: 1 } };
+let editorState = { x: 0, y: 0, scale: 1 };   // single crop state
 let adjustState = { zoom: 1, panX: 0, panY: 0, brightness: 100, contrast: 100, saturation: 100, hue: 0, sharpness: 0, temperature: 0, vignette: 0 };
 
 function switchTheme(theme) {
@@ -69,21 +68,15 @@ function showError(msg) {
   overlay.classList.add('show');
 }
 
-async function validateFrameOrientation(file, expected) {
-  const img = await loadImage(file);
-  const actual = img.width > img.height ? 'landscape' : 'portrait';
-  if (actual !== expected) { showError(`This frame is ${actual}, expected ${expected}.`); return false; }
-  return true;
-}
+// Single frame upload – no orientation validation needed now, we'll check during preview
+document.getElementById('frameInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (f) {
+    frameFile = f;
+    // Optional: load to check dimensions but not required yet
+  }
+});
 
-document.getElementById('portraitFrame').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (f) { if (await validateFrameOrientation(f, 'portrait')) portraitFrameFile = f; else { portraitFrameFile = null; e.target.value = ''; } }
-});
-document.getElementById('landscapeFrame').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (f) { if (await validateFrameOrientation(f, 'landscape')) landscapeFrameFile = f; else { landscapeFrameFile = null; e.target.value = ''; } }
-});
 document.getElementById('photosInput').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   const validFiles = [], invalid = [];
@@ -101,7 +94,7 @@ document.getElementById('photosInput').addEventListener('change', async (e) => {
     } catch { invalid.push(i+1); }
   }
   hideProgress();
-  if (invalid.length) showError(`${invalid.length} image(s) excluded. ${validFiles.length} valid loaded.`);
+  if (invalid.length) showError(`${invalid.length} image(s) excluded (low detail). ${validFiles.length} valid loaded.`);
   photosFiles = validFiles;
 });
 
@@ -179,6 +172,34 @@ function applyTemperature(imageData, amount) {
 }
 
 async function generatePreview() {
+  if (!frameFile) { showError("Please upload a frame first."); return; }
+  if (photosFiles.length === 0) { showError("Please upload at least one photo."); return; }
+  
+  // Load frame once to get its orientation
+  const frameImg = await loadImage(frameFile);
+  const frameOrientation = detectOrientation(frameImg);
+  
+  // Filter photos that match frame orientation
+  const matchingPhotos = [];
+  const mismatched = [];
+  for (let i = 0; i < photosFiles.length; i++) {
+    const img = await loadImage(photosFiles[i]);
+    const photoOrientation = detectOrientation(img);
+    if (photoOrientation === frameOrientation) {
+      matchingPhotos.push(photosFiles[i]);
+    } else {
+      mismatched.push(i+1);
+    }
+  }
+  
+  if (mismatched.length > 0) {
+    showError(`${mismatched.length} photo(s) have orientation (${frameOrientation === 'portrait' ? 'landscape' : 'portrait'}) that does not match the frame. They will be excluded.`);
+  }
+  if (matchingPhotos.length === 0) {
+    showError("No photos match the frame orientation. Please upload photos with the same orientation as the frame.");
+    return;
+  }
+  
   if (batch.length > 0 && !confirm('Preview already generated. Overwrite?')) return;
   batch = [];
   showProgress('Framing Photos...');
@@ -186,17 +207,15 @@ async function generatePreview() {
   const autoExp = document.getElementById('autoExposureToggle').classList.contains('active');
   const strength = parseInt(document.getElementById('strengthSlider').value);
   
-  for (let i = 0; i < photosFiles.length; i++) {
+  for (let i = 0; i < matchingPhotos.length; i++) {
     await new Promise(r => setTimeout(r, 50));
-    updateProgress(i+1, photosFiles.length);
-    const img = await loadImage(photosFiles[i]);
+    updateProgress(i+1, matchingPhotos.length);
+    const img = await loadImage(matchingPhotos[i]);
     const scaled = await downscaleImage(img);
-    const orientation = detectOrientation(scaled);
-    const frameFile = orientation === 'portrait' ? portraitFrameFile : landscapeFrameFile;
-    const frame = await loadImage(frameFile);
+    // orientation is guaranteed to match frameOrientation
     batch.push({
-      photo: scaled, frame, orientation,
-      cropState: { ...(orientation==='portrait'?editorState.portrait:editorState.landscape) },
+      photo: scaled, frame: frameImg,
+      cropState: { ...editorState },
       brightness:100, contrast:100, saturation:100, hue:0, sharpness:0, temperature:0, vignette:0,
       zoom:1, panX:0, panY:0, index:i, autoEnhanced:autoExp, enhanceStrength:strength
     });
