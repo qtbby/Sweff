@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Sweff — Pro Photo Framing Studio</title>
+  <title>Sweff — Smart Photo Framing Studio</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
@@ -37,11 +37,11 @@
   <div class="content-wrapper">
     <div class="sidebar">
       <div class="section">
-        <h3>📤 Upload &amp; Frames</h3>
+        <h3>📤 Upload Frame &amp; Photos</h3>
         <div class="card">
-          <div class="input-group"><label>Portrait Frame (PNG)</label> <input type="file" id="portraitFrame" accept="image/png"></div>
-          <div class="input-group"><label>Landscape Frame (PNG)</label> <input type="file" id="landscapeFrame" accept="image/png"></div>
+          <div class="input-group"><label>Frame (PNG with transparency)</label> <input type="file" id="frameInput" accept="image/png"></div>
           <div class="input-group"><label>Photos (multiple)</label> <input type="file" id="photosInput" multiple accept="image/*"></div>
+          <div class="text-xs text-gray-400 mt-2">📌 The system will automatically match each photo to the frame orientation. Only matching photos will be framed.</div>
         </div>
       </div>
       <div class="section">
@@ -81,7 +81,7 @@
           <div class="empty-state">
             <div class="empty-state-icon">🖼️</div>
             <h3>Ready to Frame?</h3>
-            <p>Upload your frames and photos to get started</p>
+            <p>Upload a frame (PNG) and your photos to get started</p>
           </div>
         </div>
       </div>
