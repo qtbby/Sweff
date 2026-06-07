@@ -140,8 +140,9 @@
             <input type="range" class="slider" id="sharpnessSlider" min="0" max="100" value="0" onchange="updateAdjustPreview()">
           </div>
           <div class="input-group">
-            <label>Vignette: <span id="vignetteLabel">0</span></label>
-            <input type="range" class="slider" id="vignetteSlider" min="0" max="100" value="0" onchange="updateAdjustPreview()">
+            <label>Frames (select portrait + landscape PNGs)</label>
+              <input type="file" id="framesInput" accept="image/png" multiple>
+            <div id="frameStatus" class="text-xs text-gray-400 mt-1"></div>
           </div>
         </div>
         
