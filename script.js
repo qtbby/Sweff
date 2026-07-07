@@ -1,270 +1,262 @@
 // script.js
-const MAX_DECODE_PX = 1200;
-const THUMB_MAX_WIDTH = 200;
+
 let frames = { portrait: null, landscape: null };
 let photosFiles = [];
 let batch = [];
-let currentAdjustIndex = -1;
+let currentEditorIndex = 0;
 
-// Theme Switcher
+// ================= THEME SYSTEM =================
 function switchTheme(theme) {
-  if(theme === 'default') {
-    document.body.className = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'theme-dark' : 'theme-light';
-  } else {
-    document.body.className = `theme-${theme}`;
+  document.body.className = `theme-${theme}`;
+  localStorage.setItem('sweff-theme', theme);
+}
+function switchCustomTheme() {
+  const bg = prompt("Enter Custom Background Color (e.g., #222222 or red):", "#2c3e50");
+  const txt = prompt("Enter Custom Text Color (e.g., #ffffff):", "#ecf0f1");
+  if(bg && txt) {
+    document.documentElement.style.setProperty('--custom-bg', bg);
+    document.documentElement.style.setProperty('--custom-text', txt);
+    switchTheme('custom');
   }
 }
-// Set initial theme based on default logic
-switchTheme('default');
 
-// Buy me a coffee random popup logic
-setTimeout(() => {
-  if(Math.random() > 0.3) { // 70% chance to pop up
-    document.getElementById('bmcModal').classList.add('show');
-  }
-}, 30000); // Popup after 30 seconds of usage
-
-// UI Helpers
-function showProgress(title) {
-  document.getElementById('progressTitle').textContent = title;
-  document.getElementById('progressBarFill').style.width = '0%';
-  document.getElementById('progressOverlay').classList.add('show');
+// ================= BUY ME A COFFEE POPUP =================
+function triggerBmcPopup() {
+  setTimeout(() => {
+    document.getElementById('bmcPopup').classList.add('show');
+  }, Math.floor(Math.random() * 15000) + 10000); // Pops up randomly between 10s - 25s after load
 }
-function updateProgress(current, total) {
-  document.getElementById('progressBarFill').style.width = Math.round((current / total) * 100) + '%';
+function closeBmcPopup() {
+  document.getElementById('bmcPopup').classList.remove('show');
 }
-function hideProgress() { document.getElementById('progressOverlay').classList.remove('show'); }
+window.addEventListener('load', triggerBmcPopup);
 
-// Upload Logic
+
+// ================= UPLOAD LOGIC =================
+function detectOrientation(img) {
+  return img.width > img.height ? 'landscape' : 'portrait';
+}
+
 document.getElementById('frameInput').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (files.length > 2) {
-    alert("Please upload a maximum of two frames (1 Portrait, 1 Landscape).");
-    e.target.value = ""; return;
+    alert("You can only upload a maximum of 2 frames (1 Portrait and 1 Landscape).");
+    e.target.value = '';
+    return;
   }
+
+  frames = { portrait: null, landscape: null }; // Reset
   
-  frames = { portrait: null, landscape: null };
   for (let file of files) {
     const img = await loadImage(file);
-    const orientation = img.width > img.height ? 'landscape' : 'portrait';
-    if (frames[orientation]) {
-      alert(`Error: You uploaded two ${orientation} frames. Please upload only one portrait and one landscape.`);
-      e.target.value = "";
-      frames = { portrait: null, landscape: null };
-      document.getElementById('frameStatus').textContent = "";
-      return;
+    const orientation = detectOrientation(img);
+    
+    if (orientation === 'portrait') {
+      if (frames.portrait) { alert("Cannot accept two portrait frames. Only one portrait and one landscape."); e.target.value=''; frames={portrait:null, landscape:null}; return; }
+      frames.portrait = { file, img };
+    } else {
+      if (frames.landscape) { alert("Cannot accept two landscape frames. Only one portrait and one landscape."); e.target.value=''; frames={portrait:null, landscape:null}; return; }
+      frames.landscape = { file, img };
     }
-    frames[orientation] = img;
   }
   
-  let status = "Loaded: ";
-  if(frames.portrait) status += "Portrait ";
-  if(frames.landscape) status += "Landscape ";
-  document.getElementById('frameStatus').textContent = status + "✅";
+  let msg = "Frames Accepted: \n";
+  if(frames.portrait) msg += "- 1 Portrait\n";
+  if(frames.landscape) msg += "- 1 Landscape\n";
+  alert(msg);
 });
 
 document.getElementById('photosInput').addEventListener('change', async (e) => {
   photosFiles = Array.from(e.target.files);
+  alert(`${photosFiles.length} photos loaded.`);
 });
 
 async function loadImage(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e) => { const img = new Image(); img.onload = () => resolve(img); img.src = e.target.result; };
+    reader.onload = (e) => { 
+      const img = new Image(); 
+      img.onload = () => resolve(img); 
+      img.src = e.target.result; 
+    };
     reader.readAsDataURL(file);
   });
 }
 
-function detectOrientation(img) { return img.width > img.height ? 'landscape' : 'portrait'; }
 
-// Preview Generation
+// ================= PREVIEW GENERATION =================
 async function generatePreview() {
-  if (!frames.portrait && !frames.landscape) { alert("Please upload at least one frame."); return; }
-  if (photosFiles.length === 0) { alert("Please upload at least one photo."); return; }
+  if (!frames.portrait && !frames.landscape) { alert("Please upload at least one frame first."); return; }
+  if (photosFiles.length === 0) { alert("Please upload photos."); return; }
   
   batch = [];
-  showProgress('Framing Photos...');
   document.getElementById('previewContent').innerHTML = '<div class="grid-thumbs" id="previewGrid"></div>';
+  const grid = document.getElementById('previewGrid');
   
   for (let i = 0; i < photosFiles.length; i++) {
-    await new Promise(r => setTimeout(r, 50));
-    updateProgress(i+1, photosFiles.length);
     const img = await loadImage(photosFiles[i]);
-    const orientation = detectOrientation(img);
+    const orient = detectOrientation(img);
     
-    if(!frames[orientation]) {
-       console.log(`Skipped photo ${i+1}: Missing ${orientation} frame.`);
-       continue;
-    }
+    let targetFrame = orient === 'portrait' ? frames.portrait : frames.landscape;
     
-    batch.push({
+    // Skip if matching frame isn't uploaded
+    if (!targetFrame) continue; 
+
+    // Base settings payload for the robust editor
+    const item = {
       photo: img, 
-      frame: frames[orientation],
-      brightness: 100, zoom: 1, panX: 0, panY: 0, index: batch.length
-    });
+      frame: targetFrame.img,
+      index: batch.length,
+      settings: {
+        exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0,
+        temperature: 0, tint: 0, vibrance: 0, saturation: 0, hue: 0,
+        sharpening: 0, noise: 0, clarity: 0, dehaze: 0, gamma: 100,
+        scale: 100, rotation: 0, opacity: 100
+      }
+    };
+    batch.push(item);
     
-    await renderSinglePreviewThumbnail(batch.length - 1);
+    // Render Thumbnail cleanly in grid
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const canvas = document.createElement('canvas');
+    thumb.appendChild(canvas);
+    grid.appendChild(thumb);
+    
+    renderCanvas(item, canvas);
   }
   
-  hideProgress();
-  if(batch.length > 0) document.getElementById('exportSection').style.display = 'block';
-  else document.getElementById('previewContent').innerHTML = '<div class="empty-state">No matching photos found for uploaded frames.</div>';
+  if(batch.length === 0) {
+    document.getElementById('previewContent').innerHTML = '<p class="empty-state">No photos matched the orientation of the uploaded frame(s).</p>';
+  }
 }
 
-async function renderSinglePreviewThumbnail(idx) {
-  const grid = document.getElementById('previewGrid');
-  const item = batch[idx];
-  let thumb = document.createElement('div');
-  thumb.className = 'thumb';
-  thumb.innerHTML = '<canvas></canvas><button class="btn btn-primary thumb-btn">Edit</button>';
-  grid.appendChild(thumb);
+function renderCanvas(item, canvas) {
+  const { photo, frame, settings } = item;
   
-  thumb.querySelector('button').onclick = () => openAdjustModal(idx);
+  // Set dimensions matching frame
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  const ctx = canvas.getContext('2d');
   
-  const canvas = thumb.querySelector('canvas');
-  // Simple square box for preview bounds inside the CSS Grid, canvas keeps aspect ratio
-  canvas.width = 250; canvas.height = 250; 
-  compositeImage(item, canvas);
-}
-
-function compositeImage(item, targetCanvas) {
-  const { photo, frame, zoom, panX, panY, brightness } = item;
-  const ctx = targetCanvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Set dimensions based on frame aspect ratio
-  const fa = frame.width / frame.height;
-  let cw = 250, ch = 250;
-  if(fa >= 1) ch = cw / fa; else cw = ch * fa;
+  // Apply visual transform & filters based on settings
+  ctx.save();
+  ctx.translate(canvas.width/2, canvas.height/2);
+  ctx.rotate(settings.rotation * Math.PI / 180);
+  const s = settings.scale / 100;
+  ctx.scale(s, s);
   
-  targetCanvas.width = cw; targetCanvas.height = ch;
+  // Apply CSS filters representing complex editing requirements
+  const br = 100 + Number(settings.exposure) + Number(settings.whites);
+  const ct = 100 + Number(settings.contrast);
+  const sat = 100 + Number(settings.saturation) + Number(settings.vibrance);
+  const h = settings.hue;
   
-  ctx.clearRect(0,0,cw,ch);
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,cw,ch);
+  ctx.filter = `brightness(${br}%) contrast(${ct}%) saturate(${sat}%) hue-rotate(${h}deg) opacity(${settings.opacity}%)`;
   
   // Draw Photo
-  ctx.save();
-  ctx.filter = `brightness(${brightness}%)`;
+  // Fit photo proportionally inside the canvas space
+  const scaleFit = Math.max(canvas.width / photo.width, canvas.height / photo.height);
+  const dw = photo.width * scaleFit;
+  const dh = photo.height * scaleFit;
+  ctx.drawImage(photo, -dw/2, -dh/2, dw, dh);
   
-  // Simple crop/cover math
-  const pa = photo.width / photo.height;
-  let pw, ph;
-  if(pa > fa) { ph = ch * zoom; pw = ph * pa; } 
-  else { pw = cw * zoom; ph = pw / pa; }
-  
-  const px = (cw - pw) / 2 + panX;
-  const py = (ch - ph) / 2 + panY;
-  
-  ctx.drawImage(photo, px, py, pw, ph);
   ctx.restore();
   
-  // Draw Frame
-  ctx.drawImage(frame, 0, 0, cw, ch);
+  // Draw Frame Over Photo
+  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
 }
 
-// Editor functionality
-let isDragging = false, startX, startY;
-function openAdjustModal(idx) {
-  currentAdjustIndex = idx;
-  const item = batch[idx];
-  document.getElementById('adjZoom').value = item.zoom * 100;
-  document.getElementById('adjBrightness').value = item.brightness;
-  document.getElementById('adjustModal').classList.add('show');
-  updateAdjustPreview();
+
+// ================= FULLSCREEN ROBUST EDITOR =================
+function openFullscreenEditor() {
+  if(batch.length === 0) { alert("Generate a preview first!"); return; }
+  currentEditorIndex = 0;
+  document.getElementById('fullEditor').classList.add('show');
+  loadEditorUI();
 }
 
-function closeAdjustModal() { document.getElementById('adjustModal').classList.remove('show'); }
-
-document.getElementById('adjZoom').addEventListener('input', (e) => {
-  batch[currentAdjustIndex].zoom = e.target.value / 100;
-  updateAdjustPreview();
-});
-document.getElementById('adjBrightness').addEventListener('input', (e) => {
-  batch[currentAdjustIndex].brightness = e.target.value;
-  updateAdjustPreview();
-});
-
-function updateAdjustPreview() {
-  const canvas = document.getElementById('adjustCanvas');
-  compositeImage(batch[currentAdjustIndex], canvas);
+function closeFullscreenEditor() {
+  document.getElementById('fullEditor').classList.remove('show');
+  // Re-render previews
+  generatePreview();
 }
 
-// Drag functionality for panning
-const adjArea = document.getElementById('adjustPreviewArea');
-adjArea.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX; startY = e.clientY; });
-adjArea.addEventListener('mousemove', (e) => {
-  if(!isDragging) return;
-  const item = batch[currentAdjustIndex];
-  item.panX += (e.clientX - startX) * 0.5;
-  item.panY += (e.clientY - startY) * 0.5;
-  startX = e.clientX; startY = e.clientY;
-  updateAdjustPreview();
-});
-adjArea.addEventListener('mouseup', () => isDragging = false);
-adjArea.addEventListener('mouseleave', () => isDragging = false);
-
-// Apply to All
-function applyToAll() {
-  const ref = batch[currentAdjustIndex];
-  const orientationRef = ref.frame.width > ref.frame.height ? 'landscape' : 'portrait';
+function loadEditorUI() {
+  const item = batch[currentEditorIndex];
+  const keys = Object.keys(item.settings);
   
-  batch.forEach(item => {
-    const orientationItem = item.frame.width > item.frame.height ? 'landscape' : 'portrait';
-    if(orientationItem === orientationRef) {
-      item.zoom = ref.zoom;
-      item.panX = ref.panX;
-      item.panY = ref.panY;
-      item.brightness = ref.brightness;
-    }
+  // Populate UI sliders
+  keys.forEach(k => {
+    const el = document.getElementById(`ed_${k}`);
+    if (el) el.value = item.settings[k];
   });
-  alert('Applied edit settings to all photos of the same orientation!');
-  saveAdjustment();
+  
+  updateEditor();
 }
 
-function saveAdjustment() {
-  closeAdjustModal();
-  document.getElementById('previewGrid').innerHTML = '';
-  batch.forEach((item, idx) => renderSinglePreviewThumbnail(idx));
+function updateEditor() {
+  const item = batch[currentEditorIndex];
+  
+  // Read from sliders
+  const keys = Object.keys(item.settings);
+  keys.forEach(k => {
+    const el = document.getElementById(`ed_${k}`);
+    if (el) item.settings[k] = el.value;
+  });
+  
+  const canvas = document.getElementById('mainEditorCanvas');
+  renderCanvas(item, canvas);
 }
 
+function editorNext() {
+  if (currentEditorIndex < batch.length - 1) {
+    currentEditorIndex++;
+    loadEditorUI();
+  }
+}
+
+function editorPrev() {
+  if (currentEditorIndex > 0) {
+    currentEditorIndex--;
+    loadEditorUI();
+  }
+}
+
+function applyToAll() {
+  const currentSettings = { ...batch[currentEditorIndex].settings };
+  batch.forEach(item => {
+    item.settings = { ...currentSettings };
+  });
+  alert("Settings applied to all images!");
+}
+
+function saveEditorChanges() {
+  closeFullscreenEditor();
+}
+
+
+// ================= ZIP DOWNLOAD =================
 async function downloadZip() {
+  if (batch.length === 0) { alert("Nothing to download!"); return; }
+  
   const zip = new JSZip();
-  showProgress('Creating ZIP...');
-  for(let i=0; i<batch.length; i++) {
-    updateProgress(i+1, batch.length);
+  
+  for (let i = 0; i < batch.length; i++) {
     const item = batch[i];
-    
-    // Render full res
     const c = document.createElement('canvas');
-    c.width = item.frame.width; c.height = item.frame.height;
-    
-    // Scale pan and zoom to full res
-    const scaleFactor = item.frame.width / 250; // based on our thumbnail cw logic
-    const tempItem = {...item, panX: item.panX * scaleFactor, panY: item.panY * scaleFactor, cw: item.frame.width, ch: item.frame.height };
-    
-    const ctx = c.getContext('2d');
-    ctx.clearRect(0,0,c.width,c.height);
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,c.width,c.height);
-    
-    ctx.save();
-    ctx.filter = `brightness(${tempItem.brightness}%)`;
-    const pa = tempItem.photo.width / tempItem.photo.height;
-    const fa = tempItem.frame.width / tempItem.frame.height;
-    let pw, ph;
-    if(pa > fa) { ph = c.height * tempItem.zoom; pw = ph * pa; } 
-    else { pw = c.width * tempItem.zoom; ph = pw / pa; }
-    const px = (c.width - pw) / 2 + tempItem.panX;
-    const py = (c.height - ph) / 2 + tempItem.panY;
-    
-    ctx.drawImage(tempItem.photo, px, py, pw, ph);
-    ctx.restore();
-    ctx.drawImage(tempItem.frame, 0, 0, c.width, c.height);
+    renderCanvas(item, c);
     
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.95));
-    zip.file(`framed_${String(i+1).padStart(3,'0')}.jpg`, blob);
+    zip.file(`framed_${String(i+1).padStart(3, '0')}.jpg`, blob);
   }
-  hideProgress();
-  const zipBlob = await zip.generateAsync({type:'blob'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(zipBlob);
-  a.download = (document.getElementById('zipName').value || 'Framed_Photos') + '.zip';
-  a.click();
+  
+  zip.generateAsync({type:'blob'}).then(function(content) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = "Sweff_Framed_Batch.zip";
+    a.click();
+  });
 }
