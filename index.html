@@ -6,65 +6,30 @@
   <title>Sweff — Smart Photo Framing Studio</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 </head>
 <body>
 <div class="main-wrapper">
   <div class="top-bar">
     <h1>⚡ SWEFF</h1>
     <div class="enhance-actions" id="enhanceActions" style="display: none;">
-      <div class="theme-picker">
-        <button class="theme-btn theme-cyan active" onclick="switchTheme('default')" title="Cyan"></button>
-        <button class="theme-btn theme-purple-btn" onclick="switchTheme('purple')" title="Purple"></button>
-        <button class="theme-btn theme-pink-btn" onclick="switchTheme('pink')" title="Pink"></button>
-        <button class="theme-btn theme-green-btn" onclick="switchTheme('green')" title="Green"></button>
-        <button class="theme-btn theme-orange-btn" onclick="switchTheme('orange')" title="Orange"></button>
-      </div>
-      <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #a0a0a0;">Export Settings</label>
-        <div class="toggle" id="enhanceToggle" onclick="toggleEnhance()"></div>
-      </div>
-      <div id="enhancePanel" style="display: none; background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
-        <div class="input-group" style="margin: 0;"><label>Resolution</label> <select id="targetResolution" style="margin-top: 4px;"> <option value="1080">1080p</option> <option value="1440">1440p</option> <option value="2k">2K</option> </select></div>
-        <div class="input-group" style="margin: 8px 0 0 0;"><label>Quality: <span id="qualityLabel">90</span>%</label> <input type="range" class="slider" id="qualitySlider" min="80" max="100" value="90" onchange="updateQualityLabel()" style="margin-top: 4px;"></div>
-      </div>
-      <button class="btn btn-green" onclick="downloadZip()" style="padding: 10px 24px; width: auto;">⬇️ Download ZIP</button>
+      <button class="btn btn-green" onclick="downloadZip()">⬇️ Download ZIP</button>
     </div>
   </div>
 
   <div class="content-wrapper">
     <div class="sidebar">
       <div class="section">
-        <h3>📤 Upload Frame &amp; Photos</h3>
+        <h3>📤 Upload Frames & Photos</h3>
         <div class="card">
-          <div class="input-group"><label>Frame (PNG with transparency)</label> <input type="file" id="frameInput" accept="image/png"></div>
-          <div class="input-group"><label>Photos (multiple)</label> <input type="file" id="photosInput" multiple accept="image/*"></div>
-          <div class="text-xs text-gray-400 mt-2">📌 The system will automatically match each photo to the frame orientation. Only matching photos will be framed.</div>
-        </div>
-      </div>
-      <div class="section">
-        <h3>💾 ZIP Export</h3>
-        <div class="card">
-          <div class="input-group"><label>ZIP File Name</label> <input type="text" id="zipName" placeholder="Framed_Photos" value="Framed_Photos"></div>
-        </div>
-      </div>
-      <div class="section">
-        <h3>✨ Auto Exposure</h3>
-        <div class="card">
-          <div class="toggle-group">
-            <label style="margin: 0; font-size: 11px;">Enable</label>
-            <div class="toggle" id="autoExposureToggle" onclick="toggleAutoExposure()"></div>
+          <div class="input-group">
+            <label>Frames (Upload 1 Portrait & 1 Landscape PNG)</label> 
+            <input type="file" id="frameInput" multiple accept="image/png">
           </div>
-          <div class="exposure-panel" id="exposurePanel">
-            <div class="input-group"><label>Mode</label> <select id="exposureMode"> <option value="auto">Auto Detect</option> <option value="always">Always Apply</option> </select></div>
-            <div class="input-group">
-              <label>Strength: <span id="strengthLabel">Medium</span></label>
-              <input type="range" class="slider" id="strengthSlider" min="1" max="5" value="3" onchange="updateStrengthLabel()">
-              <div class="label-row"><span>Subtle</span><span>Strong</span><span>Aggressive</span></div>
-            </div>
+          <div class="input-group">
+            <label>Photos (multiple)</label> 
+            <input type="file" id="photosInput" multiple accept="image/*">
           </div>
+          <div class="text-xs text-gray-400 mt-2">📌 The system matches photos to frame orientation automatically.</div>
         </div>
       </div>
       <div class="section">
@@ -81,105 +46,34 @@
           <div class="empty-state">
             <div class="empty-state-icon">🖼️</div>
             <h3>Ready to Frame?</h3>
-            <p>Upload a frame (PNG) and your photos to get started</p>
+            <p>Upload your frames (PNG) and photos to get started</p>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
-<!-- Adjust Modal -->
-<div class="modal-overlay" id="adjustModal">
-  <div class="modal" style="width: 95vw; max-width: 1300px; height: 92vh; max-height: 850px;">
-    <button class="modal-close" onclick="closeAdjustModal()">✕</button>
-    <h3 style="margin-bottom: 16px;">Advanced Photo Editor</h3>
-    <div class="adjust-layout">
-      <div class="adjust-preview-area" id="adjustPreviewArea">
-        <canvas id="adjustCanvas"></canvas>
-        <div class="canvas-hint">🖱️ Scroll: Zoom &nbsp;|&nbsp; Drag: Pan</div>
-      </div>
-      <div class="adjust-controls">
-        <h4>Transform</h4>
-        <div class="control-section">
-          <div class="input-group">
-            <label>Zoom: <span id="zoomLabel">100</span>%</label>
-            <input type="range" class="slider" id="zoomSlider" min="50" max="300" value="100" onchange="updateZoomFromSlider()">
-          </div>
-          <button class="btn btn-blue" onclick="resetZoomPan()" style="font-size: 10px; padding: 6px 10px; margin-top: 4px;">Reset Zoom/Pan</button>
-        </div>
-        
-        <h4>Color & Light</h4>
-        <div class="control-section">
-          <div class="input-group">
-            <label>Brightness: <span id="brightnessLabel">100</span></label>
-            <input type="range" class="slider" id="brightnessSlider" min="50" max="150" value="100" onchange="updateAdjustPreview()">
-          </div>
-          <div class="input-group">
-            <label>Contrast: <span id="contrastLabel">100</span></label>
-            <input type="range" class="slider" id="contrastSlider" min="50" max="200" value="100" onchange="updateAdjustPreview()">
-          </div>
-          <div class="input-group">
-            <label>Saturation: <span id="saturationLabel">100</span></label>
-            <input type="range" class="slider" id="saturationSlider" min="0" max="200" value="100" onchange="updateAdjustPreview()">
-          </div>
-          <div class="input-group">
-            <label>Hue: <span id="hueLabel">0</span>°</label>
-            <input type="range" class="slider" id="hueSlider" min="-180" max="180" value="0" onchange="updateAdjustPreview()">
-          </div>
-          <div class="input-group">
-            <label>Temperature: <span id="temperatureLabel">0</span></label>
-            <input type="range" class="slider" id="temperatureSlider" min="-100" max="100" value="0" onchange="updateAdjustPreview()">
-          </div>
-        </div>
-        
-        <h4>Effects</h4>
-        <div class="control-section">
-          <div class="input-group">
-            <label>Sharpness: <span id="sharpnessLabel">0</span></label>
-            <input type="range" class="slider" id="sharpnessSlider" min="0" max="100" value="0" onchange="updateAdjustPreview()">
-          </div>
-          <div class="input-group">
-            <label>Frames (select portrait + landscape PNGs)</label>
-              <input type="file" id="framesInput" accept="image/png" multiple>
-            <div id="frameStatus" class="text-xs text-gray-400 mt-1"></div>
-          </div>
-        </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
-          <button class="btn btn-gray" onclick="resetAllAdjustments()" style="font-size: 10px; padding: 8px;">Reset All</button>
-          <button class="btn btn-green" onclick="saveAdjustment()" style="font-size: 10px; padding: 8px;">✓ Save Changes</button>
-          <button class="btn btn-red" onclick="closeAdjustModal()" style="font-size: 10px; padding: 8px;">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="gallery-overlay" id="galleryOverlay">
-  <div class="gallery-container">
-    <div class="gallery-thumbs" id="galleryThumbs"></div>
-    <div class="gallery-main">
-      <img id="galleryMainImg" src="">
-      <div class="gallery-nav">
-        <button onclick="galleryPrev()">← Prev</button>
-        <button onclick="galleryNext()">Next →</button>
-        <button class="btn btn-blue" onclick="openAdjustFromGallery()" style="padding: 8px 12px; width: auto;">Adjust</button>
-        <button class="btn btn-red" onclick="closeGallery()" style="padding: 8px 12px; width: auto;">Close</button>
-      </div>
-      <div class="gallery-arrow left" onclick="galleryPrev()">‹</div>
-      <div class="gallery-arrow right" onclick="galleryNext()">›</div>
-    </div>
-  </div>
+  
+  <footer>
+    <p>Owner: Al R. Albit</p>
+    <a href="mailto:alalbit.r@gmail.com" class="report-link">Report a Problem</a>
+  </footer>
 </div>
 
 <div class="progress-overlay" id="progressOverlay">
   <div class="progress-title" id="progressTitle">Processing...</div>
   <div class="progress-bar-container"><div class="progress-bar-fill" id="progressBarFill"></div></div>
-  <div class="progress-text" id="progressText">0%</div>
+  <div id="progressText" style="text-align: center; margin-top: 8px; color: white;">0%</div>
 </div>
 
-<button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()">☰</button>
+<div class="modal-overlay" id="bmc-modal">
+  <div class="modal">
+      <span style="font-size: 50px;">😭☕</span>
+      <h3 style="color: #333; margin: 10px 0;">Buy Me A Coffee!</h3>
+      <p style="color: #555; font-size: 14px;">If you love using Sweff, please consider supporting my work!</p>
+      <p style="color: #333; margin: 15px 0;"><strong>GCash / Maya / PayPal:</strong><br> <span style="font-size: 18px; font-weight: bold; color: #0ea5e9;">0953 563 8614</span></p>
+      <button class="btn btn-blue" onclick="document.getElementById('bmc-modal').classList.remove('show')">Close</button>
+  </div>
+</div>
 
 <script src="script.js"></script>
 </body>
