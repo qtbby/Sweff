@@ -1,35 +1,21 @@
-# Batch Framer – Canva Style
+# Sweff - Simple Batch Framer
 
-A powerful web tool to batch frame photos with custom portrait/landscape overlays.  
-Adjust crop, brightness, auto‑exposure, delete unwanted images, preview gallery, and download as ZIP.
+A simple and robust web tool to batch frame photos easily. You can automatically frame batches of portraits and landscape photos by matching their orientation natively inside the browser.
 
-## Features
-- Load portrait & landscape PNG frames
-- Batch process up to 50 photos
-- Interactive master crop editor (drag/zoom)
-- Per‑image adjustment (position + brightness)
-- Auto exposure fix (overexposure detection)
-- Delete individual photos instantly
-- Gallery preview with swipe/navigation
-- Enhanced download quality (upscale to 1080p/1440p/2K)
-- Sticky top bar for easy access on mobile
+🔗 **Live Demo:** [https://qtbby.github.io/Sweff/](https://qtbby.github.io/Sweff/)
+
+## About Sweff
+Sweff is a straightforward application built to quickly overlay thousands of photos with a custom transparent PNG border (frame) before exporting them as a compressed ZIP file. It matches landscape photos to landscape frames and portrait photos to portrait frames effortlessly.
 
 ## How to Use
-1. Open `index.html` in a modern browser.
-2. Upload frame PNGs (portrait & landscape).
-3. Upload photos (JPG/PNG).
-4. Click **Load Editors** → adjust the master crop for each orientation.
-5. Click **Generate Preview** → review thumbnails.
-6. Use **Adjust** to fine‑tune position/brightness per photo.
-7. Click **Delete** to remove duplicates or unwanted images.
-8. Preview all framed images in gallery or download ZIP.
+1. Click the **Live Demo** link above to open Sweff in your web browser.
+2. Under "Upload Frames", upload up to two transparent frame `.png` files (Must be exactly one portrait and/or one landscape). 
+3. Under "Upload Photos", bulk upload the photos you wish to put inside the frames.
+4. Click **Generate Preview**.
+5. Once satisfied, click **Download ZIP** at the top right to get all your perfectly framed photos!
 
-## Requirements
-- Any modern web browser (Chrome, Firefox, Safari, Edge)
-- Internet connection (for JSZip library from CDN)
+## Need Help?
+If you encounter any problems, scroll down to the bottom of the tool and click **Report a Problem** to email the developer directly, or email at `alalbit.r@gmail.com`.
 
-## No External Dependencies
-Everything runs locally. Images never leave your device.
-
-Enjoy framing!  
-Made with ❤️ for batch photo editors.
+**Owner:** Al R. Albit  
+*Enjoy framing!*
