@@ -3,127 +3,134 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Sweff — Simple Photo Framing Studio</title>
+  <title>Sweff — Simple Photo Studio</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="theme-default">
+
+<div class="modal-overlay" id="bmcPopup">
+  <div class="modal bmc-modal">
+    <button class="modal-close" onclick="closeBmcPopup()">✕</button>
+    <div class="bmc-icon">😭☕</div>
+    <h3>Please Buy Me A Coffee!</h3>
+    <p>If you like this tool, a small donation keeps me going!</p>
+    <div class="bmc-details">
+      <strong>GCash / Maya / PayPal:</strong><br>
+      <span class="bmc-number">0953 563 8614</span>
+    </div>
+    <button class="btn btn-blue" onclick="closeBmcPopup()">Maybe Later</button>
+  </div>
+</div>
+
 <div class="main-wrapper">
-  
   <header class="top-bar">
-    <h1>⚡ SWEFF</h1>
-    <div class="theme-picker">
-      <label>Theme: </label>
-      <select id="themeSelect" onchange="switchTheme(this.value)">
-        <option value="default">Default (Browser)</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="custom">Custom</option>
-      </select>
+    <h1>SWEFF</h1>
+    <div class="header-actions">
+      <div class="theme-picker">
+        <button class="theme-btn" style="background:#f1f5f9; border: 1px solid #ccc;" onclick="switchTheme('light')" title="Light"></button>
+        <button class="theme-btn" style="background:#94a3b8;" onclick="switchTheme('default')" title="Default"></button>
+        <button class="theme-btn" style="background:#1e293b;" onclick="switchTheme('dark')" title="Dark"></button>
+        <button class="theme-btn" style="background:linear-gradient(45deg, red, blue);" onclick="switchCustomTheme()" title="Custom"></button>
+      </div>
+      <button class="btn btn-green" onclick="downloadZip()">Download ZIP</button>
     </div>
   </header>
 
   <div class="content-wrapper">
-    <div class="controls-panel">
-      
-      <div class="card">
-        <h3>1. Upload Frames (Max 2)</h3>
-        <p class="hint">Upload one Portrait and one Landscape frame (PNG).</p>
-        <div class="input-group">
+    <aside class="sidebar">
+      <div class="section">
+        <h3>📤 Upload Assets</h3>
+        <div class="card">
+          <label>Frames (Select 1 or 2: Portrait/Landscape)</label>
           <input type="file" id="frameInput" accept="image/png" multiple>
-        </div>
-        <div id="frameStatus" class="status-msg"></div>
-      </div>
-
-      <div class="card">
-        <h3>2. Upload Photos</h3>
-        <div class="input-group">
+          <label class="mt">Photos (Multiple)</label>
           <input type="file" id="photosInput" multiple accept="image/*">
         </div>
       </div>
-
-      <div class="card">
-        <h3>3. Action</h3>
-        <button class="btn btn-primary" onclick="generatePreview()">Generate Preview</button>
-      </div>
-
-      <div class="card" id="exportSection" style="display: none;">
-        <h3>4. Export</h3>
-        <div class="input-group">
-          <label>ZIP File Name</label>
-          <input type="text" id="zipName" placeholder="Framed_Photos" value="Framed_Photos">
-        </div>
-        <button class="btn btn-success" onclick="downloadZip()">⬇️ Download ZIP</button>
-      </div>
-
-    </div>
-
-    <div class="preview-panel">
-      <div id="previewContent">
-        <div class="empty-state">
-          <div class="empty-state-icon">🖼️</div>
-          <h2>Ready to Frame?</h2>
-          <p>Upload your frames and photos to get started.</p>
+      <div class="section">
+        <h3>⚙️ Actions</h3>
+        <div class="card">
+          <button class="btn btn-blue" onclick="generatePreview()">Generate Preview</button>
+          <button class="btn btn-gray mt" onclick="openFullscreenEditor()">Open Fullscreen Editor</button>
         </div>
       </div>
-    </div>
+    </aside>
+
+    <main class="main-content">
+      <div id="previewContent" class="preview-container">
+        <p class="empty-state">Upload frames and photos, then click "Generate Preview"</p>
+      </div>
+    </main>
   </div>
 
-  <footer>
-    <p>Owner: Al R. Albit</p>
-    <p>Report Problem: <a href="mailto:alalbit.r@gmail.com">alalbit.r@gmail.com</a></p>
+  <footer class="app-footer">
+    <span>Owner: <strong>Al R. Albit</strong></span>
+    <a href="mailto:alalbit.r@gmail.com" class="report-link">Report Problem</a>
   </footer>
-
 </div>
 
-<div class="modal-overlay" id="adjustModal">
-  <div class="modal large-modal">
-    <div class="modal-header">
-      <h2>Edit Photo</h2>
-      <button class="modal-close" onclick="closeAdjustModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="adjust-layout">
-        <div class="adjust-preview-area" id="adjustPreviewArea">
-          <canvas id="adjustCanvas"></canvas>
-          <div class="canvas-hint">Drag to Pan • Scroll to Zoom</div>
-        </div>
-        <div class="adjust-controls">
-          <div class="input-group">
-            <label>Zoom / Crop</label>
-            <input type="range" class="slider" id="adjZoom" min="10" max="300" value="100">
-          </div>
-          <div class="input-group">
-            <label>Brightness</label>
-            <input type="range" class="slider" id="adjBrightness" min="0" max="200" value="100">
-          </div>
-          <div class="modal-actions" style="margin-top: 20px;">
-            <button class="btn btn-primary" onclick="saveAdjustment()">✓ Save Changes</button>
-            <button class="btn btn-secondary" onclick="applyToAll()">Apply to All</button>
-          </div>
-        </div>
-      </div>
+<div class="fullscreen-editor" id="fullEditor">
+  <div class="editor-header">
+    <button class="btn btn-gray" onclick="closeFullscreenEditor()">← Back</button>
+    <h2>Advanced Photo Editor</h2>
+    <div class="editor-actions">
+      <button class="btn btn-amber" onclick="applyToAll()">Apply to All</button>
+      <button class="btn btn-blue" onclick="saveEditorChanges()">Save & Close</button>
     </div>
   </div>
-</div>
-
-<div class="modal-overlay" id="bmcModal">
-  <div class="modal text-center">
-    <button class="modal-close" onclick="document.getElementById('bmcModal').classList.remove('show')">✕</button>
-    <div class="funny-icon">😭☕</div>
-    <h2>Buy Me a Coffee!</h2>
-    <p>Creating awesome tools takes time and lots of coffee! If you like this tool, consider supporting me.</p>
-    <div class="wallet-info">
-      <p><strong>GCash / Maya / PayPal Number:</strong></p>
-      <h3>0953 563 8614</h3>
+  
+  <div class="editor-body">
+    <div class="editor-sidebar left">
+      <h3>History & Tools</h3>
+      <button class="btn btn-gray">Undo</button>
+      <button class="btn btn-gray">Redo</button>
+      <hr>
+      <button class="btn btn-gray">Crop / Rotate</button>
+      <button class="btn btn-gray">Brush Mask</button>
+      <button class="btn btn-gray">Linear Gradient</button>
+      <button class="btn btn-gray">Radial Mask</button>
+      <button class="btn btn-gray">Luminance Mask</button>
+      <button class="btn btn-gray">Clone Stamp</button>
+      <button class="btn btn-gray">Healing Brush</button>
+      <button class="btn btn-gray">Object Removal</button>
+      <button class="btn btn-gray">Background Removal</button>
+      <button class="btn btn-gray">Text Overlay</button>
     </div>
-    <button class="btn btn-primary" onclick="document.getElementById('bmcModal').classList.remove('show')">Maybe Next Time</button>
-  </div>
-</div>
 
-<div class="progress-overlay" id="progressOverlay">
-  <div class="progress-title" id="progressTitle">Processing...</div>
-  <div class="progress-bar-container"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+    <div class="editor-canvas-container">
+      <button class="nav-btn prev" onclick="editorPrev()">&#10094;</button>
+      <canvas id="mainEditorCanvas"></canvas>
+      <button class="nav-btn next" onclick="editorNext()">&#10095;</button>
+    </div>
+
+    <div class="editor-sidebar right">
+      <h3>Adjustments</h3>
+      
+      <label>Exposure</label><input type="range" class="slider" id="ed_exposure" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Contrast</label><input type="range" class="slider" id="ed_contrast" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Highlights</label><input type="range" class="slider" id="ed_highlights" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Shadows</label><input type="range" class="slider" id="ed_shadows" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Whites</label><input type="range" class="slider" id="ed_whites" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Blacks</label><input type="range" class="slider" id="ed_blacks" min="-100" max="100" value="0" oninput="updateEditor()">
+      
+      <label>Temperature</label><input type="range" class="slider" id="ed_temperature" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Tint</label><input type="range" class="slider" id="ed_tint" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Vibrance</label><input type="range" class="slider" id="ed_vibrance" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Saturation</label><input type="range" class="slider" id="ed_saturation" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Hue</label><input type="range" class="slider" id="ed_hue" min="-180" max="180" value="0" oninput="updateEditor()">
+      
+      <label>Sharpening</label><input type="range" class="slider" id="ed_sharpening" min="0" max="100" value="0" oninput="updateEditor()">
+      <label>Noise Reduction</label><input type="range" class="slider" id="ed_noise" min="0" max="100" value="0" oninput="updateEditor()">
+      <label>Clarity</label><input type="range" class="slider" id="ed_clarity" min="-100" max="100" value="0" oninput="updateEditor()">
+      <label>Dehaze</label><input type="range" class="slider" id="ed_dehaze" min="0" max="100" value="0" oninput="updateEditor()">
+      <label>Gamma</label><input type="range" class="slider" id="ed_gamma" min="10" max="300" value="100" oninput="updateEditor()">
+      
+      <label>Scale</label><input type="range" class="slider" id="ed_scale" min="10" max="300" value="100" oninput="updateEditor()">
+      <label>Rotation</label><input type="range" class="slider" id="ed_rotation" min="-180" max="180" value="0" oninput="updateEditor()">
+      <label>Layer Opacity</label><input type="range" class="slider" id="ed_opacity" min="0" max="100" value="100" oninput="updateEditor()">
+    </div>
+  </div>
 </div>
 
 <script src="script.js"></script>
