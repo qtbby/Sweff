@@ -3,76 +3,127 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Sweff — Smart Photo Framing Studio</title>
+  <title>Sweff — Simple Photo Framing Studio</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
-<body>
+<body class="theme-default">
 <div class="main-wrapper">
-  <div class="top-bar">
+  
+  <header class="top-bar">
     <h1>⚡ SWEFF</h1>
-    <div class="enhance-actions" id="enhanceActions" style="display: none;">
-      <button class="btn btn-green" onclick="downloadZip()">⬇️ Download ZIP</button>
+    <div class="theme-picker">
+      <label>Theme: </label>
+      <select id="themeSelect" onchange="switchTheme(this.value)">
+        <option value="default">Default (Browser)</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="custom">Custom</option>
+      </select>
     </div>
-  </div>
+  </header>
 
   <div class="content-wrapper">
-    <div class="sidebar">
-      <div class="section">
-        <h3>📤 Upload Frames & Photos</h3>
-        <div class="card">
-          <div class="input-group">
-            <label>Frames (Upload 1 Portrait & 1 Landscape PNG)</label> 
-            <input type="file" id="frameInput" multiple accept="image/png">
-          </div>
-          <div class="input-group">
-            <label>Photos (multiple)</label> 
-            <input type="file" id="photosInput" multiple accept="image/*">
-          </div>
-          <div class="text-xs text-gray-400 mt-2">📌 The system matches photos to frame orientation automatically.</div>
+    <div class="controls-panel">
+      
+      <div class="card">
+        <h3>1. Upload Frames (Max 2)</h3>
+        <p class="hint">Upload one Portrait and one Landscape frame (PNG).</p>
+        <div class="input-group">
+          <input type="file" id="frameInput" accept="image/png" multiple>
+        </div>
+        <div id="frameStatus" class="status-msg"></div>
+      </div>
+
+      <div class="card">
+        <h3>2. Upload Photos</h3>
+        <div class="input-group">
+          <input type="file" id="photosInput" multiple accept="image/*">
         </div>
       </div>
-      <div class="section">
-        <h3>🔧 Processing</h3>
-        <div class="card">
-          <button class="btn btn-amber" onclick="generatePreview()">Generate Preview</button>
+
+      <div class="card">
+        <h3>3. Action</h3>
+        <button class="btn btn-primary" onclick="generatePreview()">Generate Preview</button>
+      </div>
+
+      <div class="card" id="exportSection" style="display: none;">
+        <h3>4. Export</h3>
+        <div class="input-group">
+          <label>ZIP File Name</label>
+          <input type="text" id="zipName" placeholder="Framed_Photos" value="Framed_Photos">
+        </div>
+        <button class="btn btn-success" onclick="downloadZip()">⬇️ Download ZIP</button>
+      </div>
+
+    </div>
+
+    <div class="preview-panel">
+      <div id="previewContent">
+        <div class="empty-state">
+          <div class="empty-state-icon">🖼️</div>
+          <h2>Ready to Frame?</h2>
+          <p>Upload your frames and photos to get started.</p>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="main-content">
-      <div class="preview-container">
-        <div id="previewContent">
-          <div class="empty-state">
-            <div class="empty-state-icon">🖼️</div>
-            <h3>Ready to Frame?</h3>
-            <p>Upload your frames (PNG) and photos to get started</p>
+  <footer>
+    <p>Owner: Al R. Albit</p>
+    <p>Report Problem: <a href="mailto:alalbit.r@gmail.com">alalbit.r@gmail.com</a></p>
+  </footer>
+
+</div>
+
+<div class="modal-overlay" id="adjustModal">
+  <div class="modal large-modal">
+    <div class="modal-header">
+      <h2>Edit Photo</h2>
+      <button class="modal-close" onclick="closeAdjustModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="adjust-layout">
+        <div class="adjust-preview-area" id="adjustPreviewArea">
+          <canvas id="adjustCanvas"></canvas>
+          <div class="canvas-hint">Drag to Pan • Scroll to Zoom</div>
+        </div>
+        <div class="adjust-controls">
+          <div class="input-group">
+            <label>Zoom / Crop</label>
+            <input type="range" class="slider" id="adjZoom" min="10" max="300" value="100">
+          </div>
+          <div class="input-group">
+            <label>Brightness</label>
+            <input type="range" class="slider" id="adjBrightness" min="0" max="200" value="100">
+          </div>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button class="btn btn-primary" onclick="saveAdjustment()">✓ Save Changes</button>
+            <button class="btn btn-secondary" onclick="applyToAll()">Apply to All</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <footer>
-    <p>Owner: Al R. Albit</p>
-    <a href="mailto:alalbit.r@gmail.com" class="report-link">Report a Problem</a>
-  </footer>
+</div>
+
+<div class="modal-overlay" id="bmcModal">
+  <div class="modal text-center">
+    <button class="modal-close" onclick="document.getElementById('bmcModal').classList.remove('show')">✕</button>
+    <div class="funny-icon">😭☕</div>
+    <h2>Buy Me a Coffee!</h2>
+    <p>Creating awesome tools takes time and lots of coffee! If you like this tool, consider supporting me.</p>
+    <div class="wallet-info">
+      <p><strong>GCash / Maya / PayPal Number:</strong></p>
+      <h3>0953 563 8614</h3>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('bmcModal').classList.remove('show')">Maybe Next Time</button>
+  </div>
 </div>
 
 <div class="progress-overlay" id="progressOverlay">
   <div class="progress-title" id="progressTitle">Processing...</div>
   <div class="progress-bar-container"><div class="progress-bar-fill" id="progressBarFill"></div></div>
-  <div id="progressText" style="text-align: center; margin-top: 8px; color: white;">0%</div>
-</div>
-
-<div class="modal-overlay" id="bmc-modal">
-  <div class="modal">
-      <span style="font-size: 50px;">😭☕</span>
-      <h3 style="color: #333; margin: 10px 0;">Buy Me A Coffee!</h3>
-      <p style="color: #555; font-size: 14px;">If you love using Sweff, please consider supporting my work!</p>
-      <p style="color: #333; margin: 15px 0;"><strong>GCash / Maya / PayPal:</strong><br> <span style="font-size: 18px; font-weight: bold; color: #0ea5e9;">0953 563 8614</span></p>
-      <button class="btn btn-blue" onclick="document.getElementById('bmc-modal').classList.remove('show')">Close</button>
-  </div>
 </div>
 
 <script src="script.js"></script>
