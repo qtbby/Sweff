@@ -132,31 +132,64 @@ function renderCanvas(item, canvas) {
   canvas.width = frame.width;
   canvas.height = frame.height;
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   ctx.save();
-  ctx.translate(canvas.width/2, canvas.height/2);
-  ctx.rotate(settings.rotation * Math.PI/180);
-  const s = settings.scale/100; ctx.scale(s,s);
-  const br = 100 + Number(settings.exposure) + Number(settings.whites)*0.5 - Number(settings.blacks)*0.3;
-  const ct = 100 + Number(settings.contrast) + Number(settings.clarity)*0.3;
-  const sat = 100 + Number(settings.saturation) + Number(settings.vibrance)*0.7;
-  ctx.filter = `brightness(${br}%) contrast(${ct}%) saturate(${sat}%) hue-rotate(${settings.hue}deg) opacity(${settings.opacity/100})`;
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(settings.rotation * Math.PI / 180);
+  const s = settings.scale / 100;
+  ctx.scale(s, s);
+
+  // Apply filters
+  const br = 100 + Number(settings.exposure) + Number(settings.whites) * 0.5 - Number(settings.blacks) * 0.3;
+  const ct = 100 + Number(settings.contrast) + Number(settings.clarity) * 0.3;
+  const sat = 100 + Number(settings.saturation) + Number(settings.vibrance) * 0.7;
+  ctx.filter = `brightness(${br}%) contrast(${ct}%) saturate(${sat}%) hue-rotate(${settings.hue}deg) opacity(${settings.opacity / 100})`;
+
   const bounds = getPhotoBoundsOnCanvas(canvas.width, canvas.height, photo.width, photo.height);
-  let sx=0,sy=0,sw=photo.width,sh=photo.height;
+
+  // Determine source rectangle (crop or full image)
+  let sx = 0, sy = 0, sw = photo.width, sh = photo.height;
   if (settings.cropActive) {
-    const cX = settings.cropX * canvas.width, cY = settings.cropY * canvas.height;
-    const cW = settings.cropW * canvas.width, cH = settings.cropH * canvas.height;
-    sx = (cX - bounds.dx) / bounds.scaleFit; sy = (cY - bounds.dy) / bounds.scaleFit;
-    sw = cW / bounds.scaleFit; sh = cH / bounds.scaleFit;
-    sx = Math.max(0,Math.min(photo.width,sx)); sy = Math.max(0,Math.min(photo.height,sy));
-    sw = Math.max(1,Math.min(photo.width-sx,sw)); sh = Math.max(1,Math.min(photo.height-sy,sh));
+    const cropXCanvas = settings.cropX * canvas.width;
+    const cropYCanvas = settings.cropY * canvas.height;
+    const cropWCanvas = settings.cropW * canvas.width;
+    const cropHCanvas = settings.cropH * canvas.height;
+    sx = (cropXCanvas - bounds.dx) / bounds.scaleFit;
+    sy = (cropYCanvas - bounds.dy) / bounds.scaleFit;
+    sw = cropWCanvas / bounds.scaleFit;
+    sh = cropHCanvas / bounds.scaleFit;
+    // Clamp to photo bounds
+    sx = Math.max(0, Math.min(photo.width, sx));
+    sy = Math.max(0, Math.min(photo.height, sy));
+    sw = Math.max(1, Math.min(photo.width - sx, sw));
+    sh = Math.max(1, Math.min(photo.height - sy, sh));
   }
-  const adjustedW = settings.cropActive ? bounds.dw * settings.cropW : bounds.dw;
-  const adjustedH = settings.cropActive ? bounds.dh * settings.cropH : bounds.dh;
-  const finalScale = Math.max((canvas.width/s)/adjustedW, (canvas.height/s)/adjustedH);
-  ctx.drawImage(photo, sx, sy, sw, sh, -adjustedW*finalScale/2, -adjustedH*finalScale/2, adjustedW*finalScale, adjustedH*finalScale);
-  ctx.filter = 'none'; ctx.restore();
-  ctx.drawImage(frame,0,0,canvas.width,canvas.height);
+
+  // Compute the base size of the area to draw (the uncropped photo area that would cover the canvas)
+  const baseW = settings.cropActive ? bounds.dw * settings.cropW : bounds.dw;
+  const baseH = settings.cropActive ? bounds.dh * settings.cropH : bounds.dh;
+
+  // *** Fix: use Math.min for contain (no stretch) when crop is active ***
+  const scaleFactor = settings.cropActive
+    ? Math.min((canvas.width / s) / baseW, (canvas.height / s) / baseH)
+    : Math.max((canvas.width / s) / baseW, (canvas.height / s) / baseH);
+
+  const drawW = baseW * scaleFactor;
+  const drawH = baseH * scaleFactor;
+
+  // Draw the photo (cropped region) centered
+  ctx.drawImage(
+    photo,
+    sx, sy, sw, sh,
+    -drawW / 2, -drawH / 2, drawW, drawH
+  );
+
+  ctx.filter = 'none';
+  ctx.restore();
+
+  // Overlay the frame (always fills the canvas)
+  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
 }
 
 // ================= EDITOR =================
