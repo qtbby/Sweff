@@ -79,29 +79,45 @@ document.getElementById('frameInput').addEventListener('change', async (e) => {
 
 document.getElementById('photosInput').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
-  const validFiles = [], invalid = [];
+  const validFiles = [];
+  const invalid = [];
   showProgress('Validating photos...');
   for (let i = 0; i < files.length; i++) {
     if (i % 5 === 0) { await new Promise(r => setTimeout(r, 50)); updateProgress(i, files.length); }
     try {
-      const img = await loadImage(files[i]);
-      const c = document.createElement('canvas'); c.width = 100; c.height = 100;
-      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 100, 100);
-      const data = ctx.getImageData(0, 0, 100, 100).data;
-      let variance = 0;
-      for (let j = 0; j < data.length; j += 4) variance += Math.abs(data[j]-data[j+1]) + Math.abs(data[j+1]-data[j+2]) + Math.abs(data[j+2]-data[j]);
-      variance > 1000 ? validFiles.push(files[i]) : invalid.push(i+1);
-    } catch { invalid.push(i+1); }
+      // Just try to load the image – if it succeeds, it's valid
+      await loadImage(files[i]);
+      validFiles.push(files[i]);
+    } catch {
+      invalid.push(i + 1);
+    }
   }
   hideProgress();
-  if (invalid.length) showError(`${invalid.length} image(s) excluded (low detail). ${validFiles.length} valid loaded.`);
-  photosFiles = validFiles;
+  if (invalid.length > 0) {
+    showError(`${invalid.length} image(s) were corrupted and skipped. ${validFiles.length} valid loaded.`);
+  }
+  if (validFiles.length > 0) {
+    photosFiles = validFiles;
+  } else {
+    // All uploaded files were invalid – keep previous photosFiles if any
+    if (photosFiles.length === 0) {
+      showError("No valid photos could be loaded. Please check your files.");
+    } else {
+      showError("All uploaded photos were invalid. Previous photos kept.");
+    }
+  }
 });
 
 async function loadImage(file) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => { const img = new Image(); img.onload = () => resolve(img); img.src = e.target.result; };
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image load error'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('File read error'));
     reader.readAsDataURL(file);
   });
 }
@@ -544,24 +560,72 @@ document.getElementById('galleryOverlay').addEventListener('touchend',(e)=>{
 });
 
 async function downloadZip() {
-  const zip=new JSZip();
-  const enhanceEnabled=document.getElementById('enhanceToggle').classList.contains('active');
-  const quality=parseInt(document.getElementById('qualitySlider').value)/100;
-  showProgress('Creating ZIP...');
-  for(let i=0;i<batch.length;i++){
-    await new Promise(r=>setTimeout(r,50)); updateProgress(i+1,batch.length);
-    const item=batch[i], fa=item.frame.width/item.frame.height;
-    let th=enhanceEnabled?(document.getElementById('targetResolution').value==='1080'?1080:1440):1080;
-    const tw=Math.round(th*fa), c=document.createElement('canvas');c.width=tw;c.height=th;
-    compositeImage(item,c);
-    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',quality));
-    zip.file(`framed_${String(i+1).padStart(3,'0')}.jpg`,blob);
+  if (batch.length === 0) {
+    showError("No images to download.");
+    return;
   }
-  hideProgress();
-  const zipBlob=await zip.generateAsync({type:'blob'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(zipBlob);
-  a.download=(document.getElementById('zipName').value||'Framed_Photos')+'.zip';a.click();
-  URL.revokeObjectURL(a.href);
+
+  const enhanceEnabled = document.getElementById('enhanceToggle').classList.contains('active');
+  const quality = parseInt(document.getElementById('qualitySlider').value) / 100;
+  const targetRes = enhanceEnabled ? (document.getElementById('targetResolution').value === '1080' ? 1080 : 1440) : 1080;
+
+  // Use File System Access API if available
+  if ('showDirectoryPicker' in window) {
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      showProgress('Saving images to folder...');
+      for (let i = 0; i < batch.length; i++) {
+        await new Promise(r => setTimeout(r, 50));
+        updateProgress(i + 1, batch.length);
+        const item = batch[i];
+        const fa = item.frame.width / item.frame.height;
+        const th = targetRes;
+        const tw = Math.round(th * fa);
+        const c = document.createElement('canvas');
+        c.width = tw;
+        c.height = th;
+        compositeImage(item, c);
+        const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+        const filename = `framed_${String(i + 1).padStart(3, '0')}.jpg`;
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      }
+      hideProgress();
+    } catch (e) {
+      hideProgress();
+      if (e.name !== 'AbortError' && e.name !== 'SecurityError') {
+        showError('Failed to save images: ' + e.message);
+      }
+      return;
+    }
+  } else {
+    // Fallback to ZIP download
+    const zip = new JSZip();
+    showProgress('Creating ZIP...');
+    for (let i = 0; i < batch.length; i++) {
+      await new Promise(r => setTimeout(r, 50));
+      updateProgress(i + 1, batch.length);
+      const item = batch[i];
+      const fa = item.frame.width / item.frame.height;
+      const th = targetRes;
+      const tw = Math.round(th * fa);
+      const c = document.createElement('canvas');
+      c.width = tw;
+      c.height = th;
+      compositeImage(item, c);
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+      zip.file(`framed_${String(i + 1).padStart(3, '0')}.jpg`, blob);
+    }
+    hideProgress();
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = (document.getElementById('zipName').value || 'Framed_Photos') + '.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 }
 
 window.addEventListener('DOMContentLoaded',()=>{switchTheme(localStorage.getItem('sweff-theme')||'default');});
