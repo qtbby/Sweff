@@ -80,24 +80,7 @@ document.getElementById('frameInput').addEventListener('change', async (e) => {
 });
 
 document.getElementById('photosInput').addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files);
-  const validFiles = [], invalid = [];
-  showProgress('Validating photos...');
-  for (let i = 0; i < files.length; i++) {
-    if (i % 5 === 0) { await new Promise(r => setTimeout(r, 50)); updateProgress(i, files.length); }
-    try {
-      const img = await loadImage(files[i]);
-      const c = document.createElement('canvas'); c.width = 100; c.height = 100;
-      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 100, 100);
-      const data = ctx.getImageData(0, 0, 100, 100).data;
-      let variance = 0;
-      for (let j = 0; j < data.length; j += 4) variance += Math.abs(data[j]-data[j+1]) + Math.abs(data[j+1]-data[j+2]) + Math.abs(data[j+2]-data[j]);
-      variance > 1000 ? validFiles.push(files[i]) : invalid.push(i+1);
-    } catch { invalid.push(i+1); }
-  }
-  hideProgress();
-  if (invalid.length) showError(`${invalid.length} image(s) excluded (low detail). ${validFiles.length} valid loaded.`);
-  photosFiles = validFiles;
+  photosFiles = Array.from(e.target.files);
 });
 
 async function loadImage(file) {
