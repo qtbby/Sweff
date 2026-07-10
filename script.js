@@ -157,6 +157,10 @@ function applyTemperature(imageData, amount) {
 }
 
 async function generatePreview() {
+  console.log('Generate Preview clicked');
+  console.log('frameFiles:', frameFiles);
+  console.log('photosFiles:', photosFiles);
+  
   if (Object.keys(frameFiles).length === 0) { showError("Please upload at least one frame."); return; }
   if (photosFiles.length === 0) { showError("Please upload at least one photo."); return; }
   
