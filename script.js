@@ -1,7 +1,7 @@
 // script.js
 const MAX_DECODE_PX = 1200;
 const THUMB_MAX_WIDTH = 200;
-let frameFile = null;            // single frame
+let frameFiles = {};             // { landscape: File, portrait: File }
 let photosFiles = [];
 let batch = [];
 let currentAdjustIndex = -1;
@@ -68,12 +68,14 @@ function showError(msg) {
   overlay.classList.add('show');
 }
 
-// Single frame upload – no orientation validation needed now, we'll check during preview
+// Multiple frame upload – organize by orientation
 document.getElementById('frameInput').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  if (f) {
-    frameFile = f;
-    // Optional: load to check dimensions but not required yet
+  const files = Array.from(e.target.files);
+  frameFiles = {};
+  for (const f of files) {
+    const img = await loadImage(f);
+    const orientation = detectOrientation(img);
+    frameFiles[orientation] = f;
   }
 });
 
@@ -172,33 +174,10 @@ function applyTemperature(imageData, amount) {
 }
 
 async function generatePreview() {
-  if (!frameFile) { showError("Please upload a frame first."); return; }
+  if (Object.keys(frameFiles).length === 0) { showError("Please upload at least one frame."); return; }
   if (photosFiles.length === 0) { showError("Please upload at least one photo."); return; }
   
-  // Load frame once to get its orientation
-  const frameImg = await loadImage(frameFile);
-  const frameOrientation = detectOrientation(frameImg);
-  
-  // Filter photos that match frame orientation
-  const matchingPhotos = [];
-  const mismatched = [];
-  for (let i = 0; i < photosFiles.length; i++) {
-    const img = await loadImage(photosFiles[i]);
-    const photoOrientation = detectOrientation(img);
-    if (photoOrientation === frameOrientation) {
-      matchingPhotos.push(photosFiles[i]);
-    } else {
-      mismatched.push(i+1);
-    }
-  }
-  
-  if (mismatched.length > 0) {
-    showError(`${mismatched.length} photo(s) have orientation (${frameOrientation === 'portrait' ? 'landscape' : 'portrait'}) that does not match the frame. They will be excluded.`);
-  }
-  if (matchingPhotos.length === 0) {
-    showError("No photos match the frame orientation. Please upload photos with the same orientation as the frame.");
-    return;
-  }
+  matchingPhotos = photosFiles;
   
   if (batch.length > 0 && !confirm('Preview already generated. Overwrite?')) return;
   batch = [];
@@ -212,7 +191,9 @@ async function generatePreview() {
     updateProgress(i+1, matchingPhotos.length);
     const img = await loadImage(matchingPhotos[i]);
     const scaled = await downscaleImage(img);
-    // orientation is guaranteed to match frameOrientation
+    const photoOrientation = detectOrientation(img);
+    const frameFile = frameFiles[photoOrientation] || frameFiles[Object.keys(frameFiles)[0]];
+    const frameImg = await loadImage(frameFile);
     batch.push({
       photo: scaled, frame: frameImg,
       cropState: { ...editorState },
