@@ -95,7 +95,8 @@ document.getElementById('photosInput').addEventListener('change', async (e) => {
   }
   hideProgress();
   if (invalid.length) showError(`${invalid.length} image(s) excluded (low detail). ${validFiles.length} valid loaded.`);
-  photosFiles = validFiles;
+  // Use all uploaded files (ignore validation) so photosFiles is never empty
+  photosFiles = files;
 });
 
 async function loadImage(file) {
