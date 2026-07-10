@@ -95,8 +95,7 @@ document.getElementById('photosInput').addEventListener('change', async (e) => {
   }
   hideProgress();
   if (invalid.length) showError(`${invalid.length} image(s) excluded (low detail). ${validFiles.length} valid loaded.`);
-  // Use all uploaded files (ignore validation) so photosFiles is never empty
-  photosFiles = files;
+  photosFiles = validFiles;
 });
 
 async function loadImage(file) {
@@ -545,72 +544,24 @@ document.getElementById('galleryOverlay').addEventListener('touchend',(e)=>{
 });
 
 async function downloadZip() {
-  if (batch.length === 0) {
-    showError("No images to download.");
-    return;
+  const zip=new JSZip();
+  const enhanceEnabled=document.getElementById('enhanceToggle').classList.contains('active');
+  const quality=parseInt(document.getElementById('qualitySlider').value)/100;
+  showProgress('Creating ZIP...');
+  for(let i=0;i<batch.length;i++){
+    await new Promise(r=>setTimeout(r,50)); updateProgress(i+1,batch.length);
+    const item=batch[i], fa=item.frame.width/item.frame.height;
+    let th=enhanceEnabled?(document.getElementById('targetResolution').value==='1080'?1080:1440):1080;
+    const tw=Math.round(th*fa), c=document.createElement('canvas');c.width=tw;c.height=th;
+    compositeImage(item,c);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',quality));
+    zip.file(`framed_${String(i+1).padStart(3,'0')}.jpg`,blob);
   }
-
-  const enhanceEnabled = document.getElementById('enhanceToggle').classList.contains('active');
-  const quality = parseInt(document.getElementById('qualitySlider').value) / 100;
-  const targetRes = enhanceEnabled ? (document.getElementById('targetResolution').value === '1080' ? 1080 : 1440) : 1080;
-
-  // Use File System Access API if available
-  if ('showDirectoryPicker' in window) {
-    try {
-      const dirHandle = await window.showDirectoryPicker();
-      showProgress('Saving images to folder...');
-      for (let i = 0; i < batch.length; i++) {
-        await new Promise(r => setTimeout(r, 50));
-        updateProgress(i + 1, batch.length);
-        const item = batch[i];
-        const fa = item.frame.width / item.frame.height;
-        const th = targetRes;
-        const tw = Math.round(th * fa);
-        const c = document.createElement('canvas');
-        c.width = tw;
-        c.height = th;
-        compositeImage(item, c);
-        const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
-        const filename = `framed_${String(i + 1).padStart(3, '0')}.jpg`;
-        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      }
-      hideProgress();
-    } catch (e) {
-      hideProgress();
-      if (e.name !== 'AbortError' && e.name !== 'SecurityError') {
-        showError('Failed to save images: ' + e.message);
-      }
-      return;
-    }
-  } else {
-    // Fallback to ZIP download
-    const zip = new JSZip();
-    showProgress('Creating ZIP...');
-    for (let i = 0; i < batch.length; i++) {
-      await new Promise(r => setTimeout(r, 50));
-      updateProgress(i + 1, batch.length);
-      const item = batch[i];
-      const fa = item.frame.width / item.frame.height;
-      const th = targetRes;
-      const tw = Math.round(th * fa);
-      const c = document.createElement('canvas');
-      c.width = tw;
-      c.height = th;
-      compositeImage(item, c);
-      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
-      zip.file(`framed_${String(i + 1).padStart(3, '0')}.jpg`, blob);
-    }
-    hideProgress();
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(zipBlob);
-    a.download = (document.getElementById('zipName').value || 'Framed_Photos') + '.zip';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  hideProgress();
+  const zipBlob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(zipBlob);
+  a.download=(document.getElementById('zipName').value||'Framed_Photos')+'.zip';a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{switchTheme(localStorage.getItem('sweff-theme')||'default');});
